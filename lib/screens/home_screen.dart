@@ -3,8 +3,20 @@ import 'package:provider/provider.dart';
 import '../providers/task_provider.dart';
 import '../models/task.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void dispose() {
+    // Сохраняем данные при закрытии экрана (важно для Web)
+    context.read<TaskProvider>().dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,17 +25,40 @@ class HomeScreen extends StatelessWidget {
         title: const Text('Мои Задачи'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        centerTitle: true,
       ),
       body: Consumer<TaskProvider>(
         builder: (context, provider, child) {
           final tasks = provider.tasks;
 
           if (tasks.isEmpty) {
-            return const Center(
-              child: Text(
-                'Список задач пуст.\nДобавьте новую задачу!',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.task_alt,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Список задач пуст',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Нажмите + чтобы добавить задачу',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -36,22 +71,80 @@ class HomeScreen extends StatelessWidget {
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.symmetric(vertical: 4),
-                child: ListTile(
-                  leading: Checkbox(
-                    value: task.isCompleted,
-                    onChanged: (_) => provider.toggleTask(task),
-                    activeColor: Colors.green,
-                  ),
-                  title: Text(
-                    task.title,
-                    style: TextStyle(
-                      decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                      color: task.isCompleted ? Colors.grey : Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Dismissible(
+                  key: Key(task.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
                     ),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent),
-                    onPressed: () => _showDeleteDialog(context, provider, task),
+                  confirmDismiss: (direction) async {
+                    return await _showDeleteDialog(context, provider, task);
+                  },
+                  onDismissed: (direction) {
+                    provider.deleteTask(task);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Задача "${task.title}" удалена'),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    leading: Transform.scale(
+                      scale: 1.2,
+                      child: Checkbox(
+                        value: task.isCompleted,
+                        onChanged: (_) => provider.toggleTask(task),
+                        activeColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      task.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        decoration: task.isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: task.isCompleted ? Colors.grey : Colors.black87,
+                        fontWeight:
+                            task.isCompleted ? FontWeight.normal : FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: task.isCompleted
+                        ? const Text(
+                            'Выполнено',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          )
+                        : null,
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      onPressed: () => _showDeleteDialog(context, provider, task),
+                      tooltip: 'Удалить задачу',
+                    ),
                   ),
                 ),
               );
@@ -59,10 +152,14 @@ class HomeScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddTaskDialog(context),
         backgroundColor: Colors.deepPurple,
-        child: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Добавить',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -73,11 +170,25 @@ class HomeScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Новая задача'),
+        title: const Text(
+          'Новая задача',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(hintText: 'Введите текст задачи'),
+          decoration: const InputDecoration(
+            hintText: 'Введите текст задачи',
+            prefixIcon: Icon(Icons.edit_note, color: Colors.deepPurple),
+            border: OutlineInputBorder(),
+          ),
           autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          onSubmitted: (value) {
+            if (value.isNotEmpty) {
+              context.read<TaskProvider>().addTask(value);
+              Navigator.pop(ctx);
+            }
+          },
         ),
         actions: [
           TextButton(
@@ -86,9 +197,15 @@ class HomeScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<TaskProvider>().addTask(controller.text);
-              Navigator.pop(ctx);
+              if (controller.text.isNotEmpty) {
+                context.read<TaskProvider>().addTask(controller.text);
+                Navigator.pop(ctx);
+              }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Добавить'),
           ),
         ],
@@ -97,27 +214,35 @@ class HomeScreen extends StatelessWidget {
   }
 
   // Диалог подтверждения удаления
-  void _showDeleteDialog(BuildContext context, TaskProvider provider, Task task) {
-    showDialog(
+  Future<bool> _showDeleteDialog(
+      BuildContext context, TaskProvider provider, Task task) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить задачу?'),
-        content: Text('Вы уверены, что хотите удалить "${task.title}"?'),
+        title: const Text(
+          'Удалить задачу?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Вы уверены, что хотите удалить "${task.title}"?',
+          style: const TextStyle(fontSize: 14),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Нет'),
           ),
           ElevatedButton(
-            onPressed: () {
-              provider.deleteTask(task);
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Да', style: TextStyle(color: Colors.white)),
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Да'),
           ),
         ],
       ),
     );
+    return confirmed ?? false;
   }
 }
