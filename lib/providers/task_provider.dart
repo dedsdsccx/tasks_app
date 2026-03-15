@@ -10,13 +10,12 @@ class TaskProvider extends ChangeNotifier {
 
   Future<void> init() async {
     try {
-      // Открываем бокс с данными
       _box = await Hive.openBox<Map>('tasks_box');
       _isInitialized = true;
       notifyListeners();
+      print('✅ Hive инициализирован, задач: ${_box.length}');
     } catch (e) {
-      print('Ошибка инициализации Hive: $e');
-      // В вебе это может случиться, если включен режим инкогнито
+      print('❌ Ошибка инициализации Hive: $e');
       _isInitialized = false;
     }
   }
@@ -30,6 +29,8 @@ class TaskProvider extends ChangeNotifier {
     if (title.isEmpty || !_isInitialized) return;
     final newTask = Task(id: _uuid.v4(), title: title);
     await _box.add(newTask.toMap());
+    await _box.flush(); // ✅ Принудительная запись на диск
+    print('✅ Задача добавлена: $title');
     notifyListeners();
   }
 
@@ -39,6 +40,8 @@ class TaskProvider extends ChangeNotifier {
     if (key != -1) {
       task.isCompleted = !task.isCompleted;
       await _box.putAt(key, task.toMap());
+      await _box.flush(); // ✅ Принудительная запись
+      print('✅ Задача обновлена: ${task.title}');
       notifyListeners();
     }
   }
@@ -48,7 +51,15 @@ class TaskProvider extends ChangeNotifier {
     final key = _box.values.toList().indexWhere((m) => m['id'] == task.id);
     if (key != -1) {
       await _box.deleteAt(key);
+      await _box.flush(); // ✅ Принудительная запись
+      print('✅ Задача удалена: ${task.title}');
       notifyListeners();
     }
+  }
+
+  // ✅ Метод для закрытия базы (вызывать при выходе)
+  Future<void> dispose() async {
+    await _box.flush();
+    await _box.close();
   }
 }
