@@ -1,27 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb; // ✅ Для определения веб-платформы
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'providers/task_provider.dart';
 import 'screens/home_screen.dart';
-import 'dart:io' show Platform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Настройка пути для Hive
-  if (Hive.isPlatformSupported) {
-    if (Platform.isAndroid || Platform.isIOS) {
-      // Для мобильных устройств стандартная инициализация
-      await Hive.initFlutter();
-    } else {
-      // Для Web (и Desktop) нужно указать директорию явно
-      var dir = await getApplicationDocumentsDirectory();
-      Hive.init(dir.path);
-    }
+  // ✅ Инициализация Hive
+  if (kIsWeb) {
+    // Для Web - Hive использует IndexedDB автоматически
+    await Hive.initFlutter();
+  } else {
+    // Для мобильных устройств
+    await Hive.initFlutter();
   }
 
-  // 2. Инициализация провайдера и открытие базы
+  // Инициализация провайдера и открытие базы
   final taskProvider = TaskProvider();
   await taskProvider.init();
 
