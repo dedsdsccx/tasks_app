@@ -6,31 +6,35 @@ import 'package:uuid/uuid.dart';
 class TaskProvider extends ChangeNotifier {
   late Box<Map> _box;
   final _uuid = const Uuid();
+  bool _isInitialized = false;
 
-  // Инициализация базы данных
   Future<void> init() async {
-    await Hive.initFlutter();
-    _box = await Hive.openBox<Map>('tasks_box');
-    notifyListeners(); // Обновляем UI после загрузки
+    try {
+      // Открываем бокс с данными
+      _box = await Hive.openBox<Map>('tasks_box');
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      print('Ошибка инициализации Hive: $e');
+      // В вебе это может случиться, если включен режим инкогнито
+      _isInitialized = false;
+    }
   }
 
-  // Получение списка задач
   List<Task> get tasks {
+    if (!_isInitialized) return [];
     return _box.values.map((map) => Task.fromMap(map)).toList();
   }
 
-  // Добавление задачи
   Future<void> addTask(String title) async {
-    if (title.isEmpty) return;
-    
+    if (title.isEmpty || !_isInitialized) return;
     final newTask = Task(id: _uuid.v4(), title: title);
     await _box.add(newTask.toMap());
     notifyListeners();
   }
 
-  // Переключение статуса (выполнено/нет)
   Future<void> toggleTask(Task task) async {
-    // Находим ключ в базе по ID задачи
+    if (!_isInitialized) return;
     final key = _box.values.toList().indexWhere((m) => m['id'] == task.id);
     if (key != -1) {
       task.isCompleted = !task.isCompleted;
@@ -39,8 +43,8 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
-  // Удаление задачи
   Future<void> deleteTask(Task task) async {
+    if (!_isInitialized) return;
     final key = _box.values.toList().indexWhere((m) => m['id'] == task.id);
     if (key != -1) {
       await _box.deleteAt(key);
