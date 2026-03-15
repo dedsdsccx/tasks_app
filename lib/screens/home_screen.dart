@@ -3,20 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/task_provider.dart';
 import '../models/task.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void dispose() {
-    // Сохраняем данные при закрытии экрана (важно для Web)
-    context.read<TaskProvider>().dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +14,13 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: () => _showClearDialog(context),
+            tooltip: 'Очистить все задачи',
+          ),
+        ],
       ),
       body: Consumer<TaskProvider>(
         builder: (context, provider, child) {
@@ -84,19 +79,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  confirmDismiss: (direction) async {
-                    return await _showDeleteDialog(context, provider, task);
-                  },
+                  confirmDismiss: (direction) async => 
+                      await _showDeleteDialog(context, provider, task),
                   onDismissed: (direction) {
                     provider.deleteTask(task);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Задача "${task.title}" удалена'),
+                        content: Text('Задача удалена'),
                         backgroundColor: Colors.red,
                         duration: const Duration(seconds: 2),
                       ),
@@ -107,16 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    leading: Transform.scale(
-                      scale: 1.2,
-                      child: Checkbox(
-                        value: task.isCompleted,
-                        onChanged: (_) => provider.toggleTask(task),
-                        activeColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
+                    leading: Checkbox(
+                      value: task.isCompleted,
+                      onChanged: (_) => provider.toggleTask(task),
+                      activeColor: Colors.green,
                     ),
                     title: Text(
                       task.title,
@@ -126,24 +111,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? TextDecoration.lineThrough
                             : null,
                         color: task.isCompleted ? Colors.grey : Colors.black87,
-                        fontWeight:
-                            task.isCompleted ? FontWeight.normal : FontWeight.w500,
                       ),
                     ),
-                    subtitle: task.isCompleted
-                        ? const Text(
-                            'Выполнено',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.green,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          )
-                        : null,
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
                       onPressed: () => _showDeleteDialog(context, provider, task),
-                      tooltip: 'Удалить задачу',
                     ),
                   ),
                 ),
@@ -156,33 +128,24 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () => _showAddTaskDialog(context),
         backgroundColor: Colors.deepPurple,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Добавить',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        label: const Text('Добавить', style: TextStyle(color: Colors.white)),
       ),
     );
   }
 
-  // Диалог добавления задачи
   void _showAddTaskDialog(BuildContext context) {
     final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text(
-          'Новая задача',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Новая задача'),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
             hintText: 'Введите текст задачи',
-            prefixIcon: Icon(Icons.edit_note, color: Colors.deepPurple),
             border: OutlineInputBorder(),
           ),
           autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
           onSubmitted: (value) {
             if (value.isNotEmpty) {
               context.read<TaskProvider>().addTask(value);
@@ -202,10 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(ctx);
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-            ),
             child: const Text('Добавить'),
           ),
         ],
@@ -213,20 +172,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Диалог подтверждения удаления
   Future<bool> _showDeleteDialog(
       BuildContext context, TaskProvider provider, Task task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text(
-          'Удалить задачу?',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Вы уверены, что хотите удалить "${task.title}"?',
-          style: const TextStyle(fontSize: 14),
-        ),
+        title: const Text('Удалить задачу?'),
+        content: Text('Вы уверены, что хотите удалить "${task.title}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -234,15 +186,39 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Да'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Да', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
     return confirmed ?? false;
+  }
+
+  void _showClearDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Очистить всё?'),
+        content: const Text('Это удалит все задачи безвозвратно!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Нет'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              context.read<TaskProvider>().clearAll();
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Все задачи удалены')),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Да', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 }
