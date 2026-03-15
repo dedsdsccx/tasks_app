@@ -1,4 +1,4 @@
-class Task { 
+class Task {
   final String id;
   final String title;
   bool isCompleted;
@@ -9,17 +9,15 @@ class Task {
     this.isCompleted = false,
   });
 
-  // Конвертация в Map для сохранения в Hive
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'title': title,
-      'isCompleted': isCompleted, //g
+      'isCompleted': isCompleted,
     };
   }
 
-  // Создание объекта из Map (чтение из Hive)
-  factory Task.fromMap(Map<dynamic, dynamic> map) {
+  factory Task.fromMap(Map<String, dynamic> map) {
     return Task(
       id: map['id'],
       title: map['title'],
